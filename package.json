@@ -1,6 +1,6 @@
 {
   "name": "ai-provider-helper",
-  "version": "14.0.2",
+  "version": "14.1.0",
   "description": "Local AI helper for the AI Provider Library Foundry VTT module. Loopback proxy on 8090/8091: key vault, OAuth device flows, provider probes, chat, vision, and image calls.",
   "license": "MIT",
   "type": "commonjs",
