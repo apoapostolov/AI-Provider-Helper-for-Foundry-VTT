@@ -8,7 +8,7 @@ You close the window when you are done.
 
 ## Windows
 
-1. Open the [latest GitHub release](https://github.com/apoapostolov/AI-Provider-Library-for-Foundry-VTT/releases/latest).
+1. Open the [latest GitHub release](https://github.com/apoapostolov/AI-Provider-Helper-for-Foundry-VTT/releases/latest).
 2. Download **AI-Helper-windows.zip**.
 3. Unzip it anywhere you like.
 4. Double-click **AI Helper.bat**.
@@ -20,11 +20,21 @@ If you play on The Forge, Molten, Foundry Server, or another host, double-click
 Do this the first time on this PC, and again if the helper window is not
 already open.
 
-## What to leave alone in Foundry
+## Mac and Linux
 
-Leave **Endpoint Host** on the default. Do not type a public IP.
+Open a terminal and run one command:
 
-If the browser asks to allow access to your local network, click **Allow**.
+```text
+npx ai-provider-helper
+```
+
+You need Python 3.11 or newer installed. Hosted Foundry: add `--hosted`.
+
+```text
+npx ai-provider-helper --hosted
+```
+
+Press Ctrl+C to stop the helper.
 
 ## If it still will not connect
 
@@ -54,30 +64,8 @@ needs to talk to something on this computer.
 Safari will not let a hosted Foundry page talk to a helper on this computer.
 Use Chrome, Edge, Firefox, or the Foundry desktop app.
 
-## Mac and Linux
+## What to leave alone in Foundry
 
-There is no double-click zip yet. If you already have Python 3, use the
-repository section below.
+Leave **Endpoint Host** on the default. Do not type a public IP.
 
-## If you cloned the repository
-
-This section is for a git checkout, not the Foundry module install.
-
-Keep `tools/` and `backend/` next to each other. Leave this running:
-
-```text
-python3 tools/run-helper.py
-```
-
-Windows checkout: `tools/run-helper.bat`.
-Linux: `tools/run-helper.sh`.
-macOS: `tools/run-helper.command`.
-Hosted Foundry: add `--foundry-hosted`.
-
-```text
-python3 tools/run-helper.py --help
-python3 tools/run-helper.py --foundry-hosted
-```
-
-A healthy start prints two URLs, including `/health`.
-HTTP contract: [docs/SERVER.md](../docs/SERVER.md).
+If the browser asks to allow access to your local network, click **Allow**.
