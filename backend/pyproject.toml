@@ -1,0 +1,15 @@
+[project]
+name = "ai-provider-library"
+version = "14.0.0"
+description = "Unified local endpoint for Foundry AI modules"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "httpx",
+  "pydantic",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
