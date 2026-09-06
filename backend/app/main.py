@@ -12,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.catalog import filter_catalog, seed_catalog
 from app.chat import chat_completions
 from app.config import Config
-from app.fetch_image import fetch_image
 from app.evaluations import SOURCE_IDS, enrich_catalog_rows, enrich_query_models, public_payload, refresh_source
+from app.fetch_image import fetch_image
 from app.images import generate_image
 from app.live_models import merge_model_lists, refresh_all
 from app.oauth import disconnect as oauth_disconnect
@@ -25,6 +25,10 @@ from app.quota import get_quota, poll_all
 from app.schemas import ChatRequest, ImageRequest, ProbeRequest, QueryRequest, VaultUpsert, VisionRequest
 from app.vault import VaultError, delete_credential, find_granted, list_credentials, resolve_secret, upsert_credential
 from app.vision import vision_complete
+
+# Bump only on a route or response shape change. The module repo reads this
+# from /health and warns when it needs a higher version.
+CONTRACT_VERSION = 1
 
 # Foundry is often opened by LAN IP or hostname on the same machine.
 LOCAL_ORIGIN_RE = (
@@ -102,6 +106,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         return {
             "status": "ok",
             "service": "ai-provider-library",
+            "contract": CONTRACT_VERSION,
             "port": cfg.port,
             "debug": cfg.debug,
             "vault": len(list_credentials(cfg.cache_dir)),

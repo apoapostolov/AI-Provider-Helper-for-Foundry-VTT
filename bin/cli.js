@@ -88,8 +88,23 @@ function ensureVenv(python) {
   if (install.status !== 0) die("pip install failed");
 }
 
+function doSetup(args) {
+  const python = findPython();
+  if (!python) die("no Python 3.11+ found. Install Python, or set APL_PYTHON to its full path.");
+  console.log(`python: ${python}`);
+  ensureVenv(python);
+  console.log(`venv: ok (${VENV})`);
+  console.log(`backend: ${BACKEND}`);
+  console.log(`cache: ${path.join(os.homedir(), ".cache", "ai-provider-helper")}`);
+  console.log("setup ok. run without --setup to start the helper.");
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.setup) {
+    doSetup(args);
+    return;
+  }
   const python = findPython();
   if (!python) {
     die("no Python 3.11+ found. Install Python, or set APL_PYTHON to its full path.");

@@ -7,6 +7,7 @@ def test_health(client) -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert body["service"] == "ai-provider-library"
+    assert body["contract"] == 1
     assert body["port"] == 8090
 
 
