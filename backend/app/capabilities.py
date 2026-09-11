@@ -7,7 +7,8 @@ IMAGE_EDIT = "image-edit"
 MUSIC = "music"
 VIDEO = "video"
 EMBEDDINGS = "embeddings"
-ALL = (CHAT, VISION, IMAGE_GEN, IMAGE_EDIT, MUSIC, VIDEO, EMBEDDINGS)
+TRANSCRIPTION = "transcription"
+ALL = (CHAT, VISION, IMAGE_GEN, IMAGE_EDIT, MUSIC, VIDEO, EMBEDDINGS, TRANSCRIPTION)
 
 
 def capabilities_from_architecture(arch: dict | None) -> list[str]:
@@ -18,6 +19,7 @@ def capabilities_from_architecture(arch: dict | None) -> list[str]:
     has_image_in = any(item in {"image", "vision"} for item in input_mods) or "image->" in modality or "vision" in modality
     has_image_out = any(item == "image" for item in output_mods) or "->image" in modality
     has_text_out = any(item == "text" for item in output_mods) or "->text" in modality or not output_mods
+    has_audio_in = any(item in {"audio", "speech"} for item in input_mods) or "audio->" in modality or "speech" in modality
     has_audio_out = any(item in {"audio", "music"} for item in output_mods) or "->audio" in modality or "music" in modality
     has_video_out = "video" in output_mods or "->video" in modality or "video" in modality
     caps: list[str] = []
@@ -33,6 +35,8 @@ def capabilities_from_architecture(arch: dict | None) -> list[str]:
         caps.append(MUSIC)
     if has_video_out:
         caps.append(VIDEO)
+    if has_audio_in and has_text_out:
+        caps.append(TRANSCRIPTION)
     return caps
 
 
@@ -48,6 +52,8 @@ def capabilities_from_pipeline_tag(tag: str) -> list[str]:
             return [CHAT]
         case "feature-extraction" | "sentence-similarity":
             return [EMBEDDINGS]
+        case "automatic-speech-recognition" | "speech-to-text":
+            return [TRANSCRIPTION]
         case _:
             return []
 

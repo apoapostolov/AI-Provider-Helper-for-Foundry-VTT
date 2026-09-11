@@ -72,6 +72,9 @@ def stage_layout(dest: Path, repo: Path = REPO) -> Path:
         "\n".join(RUNTIME_PACKAGES) + "\n",
         encoding="utf-8",
     )
+    sidecar = repo / "native" / "session-capture" / "publish" / "session-capture.exe"
+    if sidecar.is_file():
+        shutil.copy2(sidecar, dest / "session-capture.exe")
     return dest
 
 

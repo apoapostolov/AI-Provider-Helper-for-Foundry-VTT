@@ -71,3 +71,34 @@ class QueryRequest(BaseModel):
     providers: list[dict[str, Any]] = Field(default_factory=list)
     refresh: bool = False
     evaluationSources: list[str] | None = None
+
+
+class AudioImportRequest(BaseModel):
+    consumerId: str = ""
+    path: str = ""
+    chunkMinutes: int = 10
+
+
+class AudioChunkRequest(BaseModel):
+    jobId: str = ""
+    chunkMinutes: int = 10
+
+
+class AudioTranscribeRequest(BaseModel):
+    provider: str = ""
+    endpoint: str = ""
+    model: str = ""
+    api_key: str = Field(default="", repr=False)
+    consumer_id: str = ""
+    job_id: str = ""
+    diarize: bool = True
+    language: str = "en"
+    keywords: list[str] = Field(default_factory=list)
+
+
+class AudioRecordRequest(BaseModel):
+    consumerId: str = ""
+    jobId: str = ""
+    processId: int | None = None
+    includeMic: bool = True
+    preferredProcess: str = ""

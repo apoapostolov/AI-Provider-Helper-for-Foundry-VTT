@@ -15,11 +15,17 @@ def test_architecture_vision() -> None:
 def test_media_modalities() -> None:
     assert capabilities_from_architecture({"output_modalities": ["audio"]}) == ["music"]
     assert capabilities_from_architecture({"output_modalities": ["video"]}) == ["video"]
+    caps = capabilities_from_architecture({
+        "input_modalities": ["audio"],
+        "output_modalities": ["text"],
+    })
+    assert "transcription" in caps
 
 
 def test_pipeline_tags() -> None:
     assert capabilities_from_pipeline_tag("text-to-image") == ["image-gen"]
     assert capabilities_from_pipeline_tag("image-text-to-text") == ["chat", "vision"]
+    assert capabilities_from_pipeline_tag("automatic-speech-recognition") == ["transcription"]
 
 
 def test_filter_catalog_vision() -> None:

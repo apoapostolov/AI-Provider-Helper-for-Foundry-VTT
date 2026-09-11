@@ -22,13 +22,28 @@ from app.probe import probe_provider
 from app.query import build_query
 from app.queue import ProviderQueue
 from app.quota import get_quota, poll_all
-from app.schemas import ChatRequest, ImageRequest, ProbeRequest, QueryRequest, VaultUpsert, VisionRequest
+from app.audio_jobs import delete_job, import_audio, load_job, public_job
+from app.capture import list_devices, record_status, start_record, stop_record
+from app.chunk import chunk_job
+from app.schemas import (
+    AudioChunkRequest,
+    AudioImportRequest,
+    AudioRecordRequest,
+    AudioTranscribeRequest,
+    ChatRequest,
+    ImageRequest,
+    ProbeRequest,
+    QueryRequest,
+    VaultUpsert,
+    VisionRequest,
+)
+from app.transcribe import transcribe_job
 from app.vault import VaultError, delete_credential, find_granted, list_credentials, resolve_secret, upsert_credential
 from app.vision import vision_complete
 
 # Bump only on a route or response shape change. The module repo reads this
 # from /health and warns when it needs a higher version.
-CONTRACT_VERSION = 1
+CONTRACT_VERSION = 2
 
 # Foundry is often opened by LAN IP or hostname on the same machine.
 LOCAL_ORIGIN_RE = (
@@ -288,6 +303,58 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     @app.post("/v1/fetch-image")
     def fetch_image_route(body: dict[str, Any]):
         return fetch_image(str(body.get("url") or ""))
+
+    @app.get("/v1/audio/devices")
+    def audio_devices() -> dict[str, Any]:
+        return list_devices()
+
+    @app.post("/v1/audio/record/start")
+    def audio_record_start(body: AudioRecordRequest) -> dict[str, Any]:
+        return start_record(
+            cfg.cache_dir,
+            body.consumerId,
+            body.processId,
+            body.includeMic,
+            body.preferredProcess,
+        )
+
+    @app.get("/v1/audio/record/status")
+    def audio_record_status(jobId: str = "") -> dict[str, Any]:
+        if not jobId:
+            raise HTTPException(status_code=400, detail="jobId is required")
+        return record_status(cfg.cache_dir, jobId)
+
+    @app.post("/v1/audio/record/stop")
+    def audio_record_stop(body: AudioRecordRequest) -> dict[str, Any]:
+        if not body.jobId:
+            raise HTTPException(status_code=400, detail="jobId is required")
+        return stop_record(cfg.cache_dir, body.jobId)
+
+    @app.post("/v1/audio/import")
+    def audio_import(body: AudioImportRequest) -> dict[str, Any]:
+        if not body.path.strip():
+            raise HTTPException(status_code=400, detail="path is required")
+        return import_audio(cfg.cache_dir, body.path, body.consumerId, body.chunkMinutes)
+
+    @app.post("/v1/audio/chunk")
+    def audio_chunk(body: AudioChunkRequest) -> dict[str, Any]:
+        if not body.jobId:
+            raise HTTPException(status_code=400, detail="jobId is required")
+        return chunk_job(cfg.cache_dir, body.jobId, body.chunkMinutes)
+
+    @app.post("/v1/audio/transcribe")
+    async def audio_transcribe(body: AudioTranscribeRequest) -> dict[str, Any]:
+        body.api_key = _inject(body.provider, body.consumer_id, body.api_key)
+        return await app.state.queue.run(body.provider, lambda: transcribe_job(cfg.cache_dir, body))
+
+    @app.get("/v1/audio/jobs/{job_id}")
+    def audio_job(job_id: str) -> dict[str, Any]:
+        return public_job(load_job(cfg.cache_dir, job_id))
+
+    @app.delete("/v1/audio/jobs/{job_id}")
+    def audio_job_delete(job_id: str) -> dict[str, Any]:
+        delete_job(cfg.cache_dir, job_id)
+        return {"ok": True}
 
     @app.post("/v1/shutdown")
     def shutdown() -> dict[str, Any]:

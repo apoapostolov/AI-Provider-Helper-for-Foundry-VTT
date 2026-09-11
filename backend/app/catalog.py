@@ -29,7 +29,7 @@ DEFAULT_ENDPOINTS: dict[str, str] = {
 }
 
 SEED: list[dict[str, Any]] = [
-    {"id": "openai", "name": "OpenAI", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision", "image-gen", "image-edit"]},
+    {"id": "openai", "name": "OpenAI", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision", "image-gen", "image-edit", "transcription"]},
     {"id": "anthropic", "name": "Anthropic", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision"]},
     {"id": "gemini", "name": "Google Gemini", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision", "image-gen", "image-edit", "music", "video"]},
     {"id": "openai-codex", "name": "OpenAI Codex", "kind": "cloud", "auth": "oauth", "capabilities": ["chat", "vision", "image-gen", "image-edit"]},
@@ -55,6 +55,7 @@ CV = ["chat", "vision"]
 IG = ["image-gen", "image-edit"]
 MUSIC = ["music"]
 VIDEO = ["video"]
+TR = ["transcription"]
 SEED_MODELS: dict[str, list[dict[str, Any]]] = {
     "openai": [
         {"id": "gpt-5.6-luna", "label": "GPT-5.6 Luna", "capabilities": CV},
@@ -64,6 +65,9 @@ SEED_MODELS: dict[str, list[dict[str, Any]]] = {
         {"id": "gpt-5.2", "label": "GPT-5.2", "capabilities": CV},
         {"id": "gpt-4.1", "label": "GPT-4.1", "capabilities": CV},
         {"id": "gpt-4o", "label": "GPT-4o", "capabilities": CV},
+        {"id": "gpt-4o-transcribe-diarize", "label": "GPT-4o Transcribe Diarize", "capabilities": TR, "recommended": True},
+        {"id": "gpt-4o-transcribe", "label": "GPT-4o Transcribe", "capabilities": TR},
+        {"id": "gpt-4o-mini-transcribe", "label": "GPT-4o Mini Transcribe", "capabilities": TR},
         {"id": "gpt-image-2", "label": "GPT Image 2", "capabilities": IG, "recommended": True},
         {"id": "gpt-image-1.5", "label": "GPT Image 1.5", "capabilities": IG},
         {"id": "gpt-image-1", "label": "GPT Image 1", "capabilities": IG},
