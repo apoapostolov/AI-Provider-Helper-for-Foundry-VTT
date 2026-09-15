@@ -216,15 +216,43 @@ internal static class Program
             try { processName = Process.GetProcessById((int)args.Pid).ProcessName + ".exe"; }
             catch { processName = args.Pid.ToString(CultureInfo.InvariantCulture); }
 
+            var pausePath = Path.Combine(args.OutDir, "pause");
+            var capturing = true;
+            long pausedMs = 0;
+            var pauseStarted = started;
             while (!cts.IsCancellationRequested && !File.Exists(stopPath))
             {
+                var wantPause = File.Exists(pausePath);
+                if (wantPause && capturing)
+                {
+                    try { remote?.StopRecording(); } catch { /* already stopped */ }
+                    try { mic?.StopRecording(); } catch { /* already stopped */ }
+                    capturing = false;
+                    pauseStarted = DateTime.UtcNow;
+                }
+                else if (!wantPause && !capturing)
+                {
+                    pausedMs += (long)(DateTime.UtcNow - pauseStarted).TotalMilliseconds;
+                    try { remote?.StartRecording(); } catch { /* already started */ }
+                    try { mic?.StartRecording(); } catch { /* already started */ }
+                    capturing = true;
+                }
+                try { remoteWriter?.Flush(); } catch { /* header flush */ }
+                try { micWriter?.Flush(); } catch { /* header flush */ }
+                var hold = capturing ? 0 : (long)(DateTime.UtcNow - pauseStarted).TotalMilliseconds;
+                var elapsed = Math.Max(0, (long)(DateTime.UtcNow - started).TotalMilliseconds - pausedMs - hold);
+                long bytes = 0;
+                try { bytes += new FileInfo(remotePath).Length; } catch { /* missing */ }
+                try { if (File.Exists(micPath)) bytes += new FileInfo(micPath).Length; } catch { /* missing */ }
                 var payload = new Dictionary<string, object?>
                 {
                     ["ok"] = true,
                     ["pid"] = args.Pid,
                     ["process"] = processName,
-                    ["elapsedMs"] = (long)(DateTime.UtcNow - started).TotalMilliseconds,
-                    ["peak"] = peak
+                    ["elapsedMs"] = elapsed,
+                    ["peak"] = peak,
+                    ["paused"] = !capturing,
+                    ["bytes"] = bytes
                 };
                 await File.WriteAllTextAsync(statusPath, JsonSerializer.Serialize(payload, JsonOpts), cts.Token).ConfigureAwait(false);
                 await Task.Delay(400, cts.Token).ConfigureAwait(false);

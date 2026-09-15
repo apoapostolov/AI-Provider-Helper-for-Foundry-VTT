@@ -104,6 +104,49 @@ def test_transcribe_mocked_provider(client, tmp_path: Path, monkeypatch) -> None
     assert body.get("keywords") == ["Thistle", "Blackwater"]
 
 
+def test_transcribe_routes_native_provider(client, tmp_path: Path, monkeypatch) -> None:
+    from app import chunk as chunk_mod
+    from app import transcribe as transcribe_mod
+
+    src = tmp_path / "table.wav"
+    _wav(src)
+    imported = client.post("/v1/audio/import", json={"path": str(src)}).json()
+    job_id = imported["jobId"]
+
+    def fake_run(args: list[str]) -> None:
+        out_dir = Path(args[-1]).parent
+        (out_dir / "000.mp3").write_bytes(b"id3")
+
+    captured: dict = {}
+
+    async def fake_native(**kwargs):
+        captured.update(kwargs)
+        return {
+            "segments": [
+                {"start": 0.0, "end": 1.2, "speaker": "0", "text": "We ride at dawn."}
+            ]
+        }
+
+    monkeypatch.setattr(chunk_mod, "ffmpeg_bin", lambda: "ffmpeg")
+    monkeypatch.setattr(chunk_mod, "run_ffmpeg", fake_run)
+    monkeypatch.setattr(transcribe_mod, "transcribe_native", fake_native)
+    response = client.post(
+        "/v1/audio/transcribe",
+        json={
+            "provider": "deepgram",
+            "job_id": job_id,
+            "api_key": "dg-test",
+            "model": "nova-3",
+        },
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["state"] == "diarized"
+    assert body["segments"][0]["speaker"] == "SPEAKER_00"
+    assert captured.get("provider") == "deepgram"
+    assert captured.get("model") == "nova-3"
+
+
 def test_keyword_prompt_caps() -> None:
     prompt = keyword_prompt(["Thistle", "", "Blackwater Keep of the North"], limit=20)
     assert prompt == "Thistle"
@@ -123,5 +166,12 @@ def test_catalog_includes_transcription(client) -> None:
     body = response.json()
     ids = {row["id"] for row in body["providers"]}
     assert "openai" in ids
+    assert "deepgram" in ids
+    assert "gladia" in ids
+    assert "assemblyai" in ids
+    assert "speechmatics" in ids
+    assert "groq" in ids
     models = {model["id"] for row in body["providers"] for model in row.get("models") or []}
     assert "gpt-4o-transcribe-diarize" in models
+    assert "nova-3" in models
+    assert "whisper-large-v3" in models

@@ -126,6 +126,8 @@ def start_record(
     process_id: int | None = None,
     include_mic: bool = True,
     preferred_process: str = "",
+    chunk_minutes: int = 10,
+    parallel_transcribe: bool = False,
 ) -> dict[str, Any]:
     exe = capture_bin()
     if not exe:
@@ -169,10 +171,13 @@ def start_record(
         "processName": str(chosen.get("name") or ""),
         "includeMic": bool(include_mic),
         "sidecarPid": proc.pid,
-        "chunkSeconds": 600,
+        "chunkSeconds": max(60, int(chunk_minutes or 10) * 60),
+        "parallelTranscribe": bool(parallel_transcribe),
+        "paused": False,
         "files": {"source": "", "chunks": [], "remote": "remote.wav", "mic": "mic.wav" if include_mic else ""},
         "duration": 0,
         "segments": [],
+        "transcribedChunks": [],
         "error": None,
         "peak": float(chosen.get("peak") or 0),
     }
@@ -185,17 +190,106 @@ def _alive(job_id: str) -> bool:
     return bool(proc and proc.poll() is None)
 
 
+def _file_bytes(folder: Path, names: list[str]) -> int:
+    total = 0
+    for name in names:
+        path = folder / name
+        if path.is_file():
+            total += path.stat().st_size
+    return total
+
+
+def decorate_progress(job: dict[str, Any], folder: Path, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    extra = extra or {}
+    elapsed = int(extra.get("elapsedMs") or job.get("elapsedMs") or 0)
+    chunk_seconds = max(60, int(job.get("chunkSeconds") or 600))
+    chunk_ms = chunk_seconds * 1000
+    closed = elapsed // chunk_ms
+    remainder = elapsed % chunk_ms
+    bytes_used = int(extra.get("bytes") or 0)
+    if bytes_used <= 0:
+        files = job.get("files") or {}
+        bytes_used = _file_bytes(folder, [files.get("remote") or "remote.wav", files.get("mic") or "mic.wav"])
+    job["elapsedMs"] = elapsed
+    job["bytes"] = bytes_used
+    job["closedChunkCount"] = closed
+    job["chunkProgress"] = 0 if chunk_ms <= 0 else remainder / chunk_ms
+    job["transcribedChunkCount"] = len(job.get("transcribedChunks") or [])
+    job["paused"] = bool(extra.get("paused") if "paused" in extra else job.get("paused"))
+    if extra.get("peak") is not None:
+        job["peak"] = extra.get("peak")
+    if extra.get("process"):
+        job["processName"] = extra.get("process")
+    return job
+
+
+def close_live_chunks(cache_dir: Path, job: dict[str, Any]) -> dict[str, Any]:
+    if not job.get("parallelTranscribe"):
+        return job
+    folder = job_dir(cache_dir, job["id"])
+    remote = folder / ((job.get("files") or {}).get("remote") or "remote.wav")
+    if not remote.is_file():
+        return job
+    closed = int(job.get("closedChunkCount") or 0)
+    if closed <= 0:
+        return job
+    chunks_dir = folder / "chunks"
+    chunks_dir.mkdir(parents=True, exist_ok=True)
+    names = list((job.get("files") or {}).get("chunks") or [])
+    seconds = max(60, int(job.get("chunkSeconds") or 600))
+    try:
+        binary = ffmpeg_bin()
+    except FileNotFoundError:
+        return job
+    for index in range(closed):
+        name = f"{index:03d}.mp3"
+        dest = chunks_dir / name
+        if dest.is_file():
+            if name not in names:
+                names.append(name)
+            continue
+        try:
+            run_ffmpeg([
+                binary,
+                "-y",
+                "-ss",
+                str(index * seconds),
+                "-t",
+                str(seconds),
+                "-i",
+                str(remote),
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-c:a",
+                "libmp3lame",
+                "-b:a",
+                "96k",
+                str(dest),
+            ])
+        except HTTPException:
+            break
+        if dest.is_file() and name not in names:
+            names.append(name)
+    job["files"] = {**(job.get("files") or {}), "chunks": names}
+    save_job(cache_dir, job)
+    return job
+
+
 def record_status(cache_dir: Path, job_id: str) -> dict[str, Any]:
     job = load_job(cache_dir, job_id)
-    status_path = job_dir(cache_dir, job_id) / "status.json"
+    folder = job_dir(cache_dir, job_id)
+    extra: dict[str, Any] = {}
+    status_path = folder / "status.json"
     if status_path.is_file():
         try:
-            extra = json.loads(status_path.read_text(encoding="utf-8"))
-            job["peak"] = extra.get("peak", job.get("peak"))
-            job["elapsedMs"] = extra.get("elapsedMs")
-            job["processName"] = extra.get("process") or job.get("processName")
+            parsed = json.loads(status_path.read_text(encoding="utf-8"))
+            if isinstance(parsed, dict):
+                extra = parsed
         except json.JSONDecodeError:
-            pass
+            extra = {}
+    decorate_progress(job, folder, extra)
     job["recording"] = job.get("state") == "recording" and _alive(job_id)
     if job.get("state") == "recording" and not _alive(job_id):
         proc = _running.get(job_id)
@@ -205,7 +299,33 @@ def record_status(cache_dir: Path, job_id: str) -> dict[str, Any]:
         job["state"] = "error"
         job["error"] = err or "capture sidecar exited"
         save_job(cache_dir, job)
+    elif job.get("state") == "recording":
+        job["paused"] = folder.joinpath("pause").is_file() or bool(job.get("paused"))
+        close_live_chunks(cache_dir, job)
+        save_job(cache_dir, job)
     return public_job(job)
+
+
+def pause_record(cache_dir: Path, job_id: str) -> dict[str, Any]:
+    job = load_job(cache_dir, job_id)
+    if job.get("state") != "recording":
+        raise HTTPException(status_code=409, detail="job is not recording")
+    (job_dir(cache_dir, job_id) / "pause").write_text("1", encoding="utf-8")
+    job["paused"] = True
+    save_job(cache_dir, job)
+    return record_status(cache_dir, job_id)
+
+
+def resume_record(cache_dir: Path, job_id: str) -> dict[str, Any]:
+    job = load_job(cache_dir, job_id)
+    if job.get("state") != "recording":
+        raise HTTPException(status_code=409, detail="job is not recording")
+    path = job_dir(cache_dir, job_id) / "pause"
+    if path.is_file():
+        path.unlink()
+    job["paused"] = False
+    save_job(cache_dir, job)
+    return record_status(cache_dir, job_id)
 
 
 def _mix(folder: Path, include_mic: bool) -> Path:

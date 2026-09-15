@@ -33,12 +33,23 @@ out.mkdir(parents=True, exist_ok=True)
 wav(out / "remote.wav")
 wav(out / "mic.wav")
 stop = out / "stop"
+pause = out / "pause"
 status = out / "status.json"
 elapsed = 0
 while not stop.is_file():
-    status.write_text(json.dumps({"ok": True, "pid": 4242, "process": "Discord.exe", "elapsedMs": elapsed, "peak": 0.4}), encoding="utf-8")
+    paused = pause.is_file()
+    status.write_text(json.dumps({
+        "ok": True,
+        "pid": 4242,
+        "process": "Discord.exe",
+        "elapsedMs": elapsed,
+        "peak": 0.4,
+        "paused": paused,
+        "bytes": 1600
+    }), encoding="utf-8")
     time.sleep(0.05)
-    elapsed += 50
+    if not paused:
+        elapsed += 50
 raise SystemExit(0)
 """
 
@@ -75,6 +86,15 @@ def test_record_start_stop(client, tmp_path: Path, monkeypatch) -> None:
     job_id = job["jobId"]
     status = client.get("/v1/audio/record/status", params={"jobId": job_id})
     assert status.status_code == 200
+    body = status.json()
+    assert "chunkProgress" in body
+    assert body["bytes"] >= 0
+    paused = client.post("/v1/audio/record/pause", json={"jobId": job_id})
+    assert paused.status_code == 200, paused.text
+    assert paused.json()["paused"] is True
+    resumed = client.post("/v1/audio/record/resume", json={"jobId": job_id})
+    assert resumed.status_code == 200, resumed.text
+    assert resumed.json()["paused"] is False
     stopped = client.post("/v1/audio/record/stop", json={"jobId": job_id})
     assert stopped.status_code == 200, stopped.text
     assert stopped.json()["state"] == "imported"

@@ -94,6 +94,7 @@ class AudioTranscribeRequest(BaseModel):
     diarize: bool = True
     language: str = "en"
     keywords: list[str] = Field(default_factory=list)
+    chunk_index: int | None = None
 
 
 class AudioRecordRequest(BaseModel):
@@ -102,3 +103,5 @@ class AudioRecordRequest(BaseModel):
     processId: int | None = None
     includeMic: bool = True
     preferredProcess: str = ""
+    chunkMinutes: int = 10
+    parallelTranscribe: bool = False

@@ -7,8 +7,10 @@ import httpx
 from fastapi import HTTPException
 
 from app.audio_jobs import job_dir, load_job, public_job, save_job
+from app.catalog import DEFAULT_ENDPOINTS
 from app.chunk import chunk_job
 from app.schemas import AudioTranscribeRequest
+from app.stt_providers import NATIVE_PROVIDERS, transcribe_native
 
 
 PROMPT_MAX = 800
@@ -74,7 +76,19 @@ async def transcribe_file(
     diarize: bool,
     language: str,
     keywords: list[str],
+    provider: str = "",
 ) -> dict[str, Any]:
+    if (provider or "").strip().lower() in NATIVE_PROVIDERS:
+        return await transcribe_native(
+            provider=provider,
+            endpoint=endpoint,
+            api_key=api_key,
+            model=model,
+            path=path,
+            diarize=diarize,
+            language=language,
+            keywords=keywords,
+        )
     url = f"{endpoint.rstrip('/')}/audio/transcriptions"
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     data: dict[str, str] = {
@@ -115,14 +129,31 @@ async def transcribe_job(cache_dir: Path, body: AudioTranscribeRequest) -> dict[
         job = load_job(cache_dir, job_id)
         chunks = (job.get("files") or {}).get("chunks") or []
     folder = job_dir(cache_dir, job_id)
-    job["state"] = "transcribing"
-    save_job(cache_dir, job)
-    endpoint = body.endpoint or "https://api.openai.com/v1"
-    model = body.model or "gpt-4o-transcribe-diarize"
+    recording = job.get("state") == "recording"
+    if not recording:
+        job["state"] = "transcribing"
+        save_job(cache_dir, job)
+    endpoint = body.endpoint or DEFAULT_ENDPOINTS.get(body.provider or "", "https://api.openai.com/v1")
+    default_models = {
+        "deepgram": "nova-3",
+        "gladia": "",
+        "assemblyai": "",
+        "speechmatics": "enhanced",
+        "groq": "whisper-large-v3",
+    }
+    model = body.model or default_models.get(body.provider or "", "gpt-4o-transcribe-diarize")
     seconds = float(job.get("chunkSeconds") or 600)
-    segments: list[dict[str, Any]] = []
+    done = list(job.get("transcribedChunks") or [])
+    selected = list(enumerate(chunks))
+    if body.chunk_index is not None:
+        if body.chunk_index < 0 or body.chunk_index >= len(chunks):
+            raise HTTPException(status_code=400, detail="chunk_index is out of range")
+        selected = [(body.chunk_index, chunks[body.chunk_index])]
+    segments: list[dict[str, Any]] = list(job.get("segments") or []) if body.chunk_index is not None else []
     try:
-        for index, name in enumerate(chunks):
+        for index, name in selected:
+            if index in done:
+                continue
             path = folder / "chunks" / name
             if not path.is_file():
                 raise HTTPException(status_code=500, detail=f"missing chunk {name}")
@@ -134,15 +165,20 @@ async def transcribe_job(cache_dir: Path, body: AudioTranscribeRequest) -> dict[
                 diarize=body.diarize,
                 language=body.language or "en",
                 keywords=body.keywords or [],
+                provider=body.provider or "",
             )
             segments.extend(normalize_segments(payload, offset=index * seconds))
+            done.append(index)
         job["segments"] = segments
+        job["transcribedChunks"] = done
+        job["transcribedChunkCount"] = len(done)
         job["keywords"] = [item.strip() for item in (body.keywords or []) if str(item).strip()]
-        job["state"] = "diarized"
+        if not recording:
+            job["state"] = "diarized"
         job["error"] = None
         job["provider"] = {"id": body.provider, "model": model}
     except Exception as exc:
-        job["state"] = "error"
+        job["state"] = "error" if not recording else job.get("state")
         job["error"] = str(exc)
         save_job(cache_dir, job)
         raise

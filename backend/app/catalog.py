@@ -26,6 +26,10 @@ DEFAULT_ENDPOINTS: dict[str, str] = {
     "vllm": "http://127.0.0.1:8000/v1",
     "lmstudio": "http://127.0.0.1:1234/v1",
     "llamacpp": "http://127.0.0.1:8080/v1",
+    "deepgram": "https://api.deepgram.com",
+    "gladia": "https://api.gladia.io",
+    "assemblyai": "https://api.assemblyai.com",
+    "speechmatics": "https://asr.api.speechmatics.com/v2",
 }
 
 SEED: list[dict[str, Any]] = [
@@ -41,10 +45,14 @@ SEED: list[dict[str, Any]] = [
     {"id": "mistral", "name": "Mistral", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision"]},
     {"id": "zai", "name": "Z.ai GLM", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision"]},
     {"id": "qwen", "name": "Qwen", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision"]},
-    {"id": "groq", "name": "Groq", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision"]},
+    {"id": "groq", "name": "Groq", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision", "transcription"]},
     {"id": "moonshot", "name": "Moonshot Kimi", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision"]},
     {"id": "minimax", "name": "MiniMax", "kind": "cloud", "auth": "key", "capabilities": ["chat", "vision"]},
     {"id": "cerebras", "name": "Cerebras", "kind": "cloud", "auth": "key", "capabilities": ["chat"]},
+    {"id": "deepgram", "name": "Deepgram", "kind": "cloud", "auth": "key", "capabilities": ["transcription"]},
+    {"id": "gladia", "name": "Gladia", "kind": "cloud", "auth": "key", "capabilities": ["transcription"]},
+    {"id": "assemblyai", "name": "AssemblyAI", "kind": "cloud", "auth": "key", "capabilities": ["transcription"]},
+    {"id": "speechmatics", "name": "Speechmatics", "kind": "cloud", "auth": "key", "capabilities": ["transcription"]},
     {"id": "ollama", "name": "Ollama", "kind": "local", "auth": "none", "capabilities": ["chat", "vision"]},
     {"id": "vllm", "name": "vLLM", "kind": "local", "auth": "optional", "capabilities": ["chat", "vision"]},
     {"id": "lmstudio", "name": "LM Studio", "kind": "local", "auth": "optional", "capabilities": ["chat", "vision"]},
@@ -115,6 +123,8 @@ SEED_MODELS: dict[str, list[dict[str, Any]]] = {
     ],
     "groq": [
         {"id": "meta-llama/llama-4-scout-17b-16e-instruct", "label": "Llama 4 Scout", "capabilities": CV},
+        {"id": "whisper-large-v3", "label": "Whisper Large v3", "capabilities": TR, "recommended": True},
+        {"id": "whisper-large-v3-turbo", "label": "Whisper Large v3 Turbo", "capabilities": TR},
     ],
     "moonshot": [
         {"id": "kimi-k2.5", "label": "Kimi K2.5", "capabilities": CV},
@@ -124,6 +134,22 @@ SEED_MODELS: dict[str, list[dict[str, Any]]] = {
     ],
     "cerebras": [
         {"id": "llama3.1-8b", "label": "Llama 3.1 8B", "capabilities": ["chat"]},
+    ],
+    "deepgram": [
+        {"id": "nova-3", "label": "Nova 3", "capabilities": TR, "recommended": True},
+        {"id": "nova-2", "label": "Nova 2", "capabilities": TR},
+        {"id": "nova-2-meeting", "label": "Nova 2 Meeting", "capabilities": TR},
+    ],
+    "gladia": [
+        {"id": "solaria-1", "label": "Solaria 1", "capabilities": TR, "recommended": True},
+    ],
+    "assemblyai": [
+        {"id": "universal", "label": "Universal", "capabilities": TR, "recommended": True},
+        {"id": "slam-1", "label": "Slam-1", "capabilities": TR},
+    ],
+    "speechmatics": [
+        {"id": "enhanced", "label": "Enhanced", "capabilities": TR, "recommended": True},
+        {"id": "standard", "label": "Standard", "capabilities": TR},
     ],
 }
 

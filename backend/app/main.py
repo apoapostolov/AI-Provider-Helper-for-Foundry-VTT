@@ -23,7 +23,7 @@ from app.query import build_query
 from app.queue import ProviderQueue
 from app.quota import get_quota, poll_all
 from app.audio_jobs import delete_job, import_audio, load_job, public_job
-from app.capture import list_devices, record_status, start_record, stop_record
+from app.capture import list_devices, pause_record, record_status, resume_record, start_record, stop_record
 from app.chunk import chunk_job
 from app.schemas import (
     AudioChunkRequest,
@@ -43,7 +43,7 @@ from app.vision import vision_complete
 
 # Bump only on a route or response shape change. The module repo reads this
 # from /health and warns when it needs a higher version.
-CONTRACT_VERSION = 2
+CONTRACT_VERSION = 3
 
 # Foundry is often opened by LAN IP or hostname on the same machine.
 LOCAL_ORIGIN_RE = (
@@ -316,6 +316,8 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             body.processId,
             body.includeMic,
             body.preferredProcess,
+            body.chunkMinutes,
+            body.parallelTranscribe,
         )
 
     @app.get("/v1/audio/record/status")
@@ -329,6 +331,18 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         if not body.jobId:
             raise HTTPException(status_code=400, detail="jobId is required")
         return stop_record(cfg.cache_dir, body.jobId)
+
+    @app.post("/v1/audio/record/pause")
+    def audio_record_pause(body: AudioRecordRequest) -> dict[str, Any]:
+        if not body.jobId:
+            raise HTTPException(status_code=400, detail="jobId is required")
+        return pause_record(cfg.cache_dir, body.jobId)
+
+    @app.post("/v1/audio/record/resume")
+    def audio_record_resume(body: AudioRecordRequest) -> dict[str, Any]:
+        if not body.jobId:
+            raise HTTPException(status_code=400, detail="jobId is required")
+        return resume_record(cfg.cache_dir, body.jobId)
 
     @app.post("/v1/audio/import")
     def audio_import(body: AudioImportRequest) -> dict[str, Any]:
