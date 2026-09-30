@@ -1,7 +1,18 @@
-# AI Provider Helper
+<div align="center">
 
-**Give your Foundry AI modules one place to reach their models, without handing
-your provider keys to each module.**
+  <h1>AI Provider Helper</h1>
+
+  <p>Give your Foundry AI modules one place to reach their models, without handing your provider keys to each module.</p>
+
+  <p>
+    <a href="https://github.com/apoapostolov/AI-Provider-Helper-for-Foundry-VTT"><img src="https://img.shields.io/badge/Type-Local%20AI%20helper-555" alt="Type: Local AI helper"></a>
+    <a href="https://github.com/apoapostolov/AI-Provider-Helper-for-Foundry-VTT"><img src="https://img.shields.io/badge/Language-Python-555" alt="Primary language: Python"></a>
+    <a href="https://github.com/apoapostolov/AI-Provider-Helper-for-Foundry-VTT/releases/latest"><img src="https://img.shields.io/github/v/release/apoapostolov/AI-Provider-Helper-for-Foundry-VTT" alt="Latest stable release version"></a>
+    <a href="https://github.com/apoapostolov/AI-Provider-Helper-for-Foundry-VTT/releases/latest"><img src="https://img.shields.io/github/release-date/apoapostolov/AI-Provider-Helper-for-Foundry-VTT?display_date=published_at&amp;label=last%20release" alt="Published date of latest stable release"></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-555" alt="License: MIT"></a>
+  </p>
+
+</div>
 
 AI Provider Helper runs on your computer alongside Foundry. It keeps the keys,
 connects to providers, and serves the AI tools used by modules such as
