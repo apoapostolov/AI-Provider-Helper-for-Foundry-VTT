@@ -12,7 +12,11 @@
     "backend/app",
     "backend/scripts",
     "backend/requirements.txt",
-    "companion",
+    "companion/AI Helper.bat",
+    "companion/AI Helper (hosted).bat",
+    "companion/AI Helper.ps1",
+    "companion/launch.py",
+    "companion/README.md",
     "README.md",
     "LICENSE"
   ],
