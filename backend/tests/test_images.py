@@ -1,10 +1,12 @@
+import asyncio
 import base64
+from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException
 
 from app.images import grok_edit_body, image_size, mask_bytes, openai_edit_form, resolve_mask
-from app.oauth import _codex_background
+from app.oauth import CODEX_CHAT_MODEL, CODEX_IMAGE_MODEL, _codex_background, generate_codex_image
 from app.schemas import ImageRequest
 
 
@@ -17,6 +19,23 @@ def test_codex_background_defaults_opaque():
     assert _codex_background("") == "opaque"
     assert _codex_background("transparent") == "transparent"
     assert _codex_background("AUTO") == "auto"
+
+
+def test_codex_image_wrapper_uses_chatgpt_supported_conversation_model():
+    captured: dict = {}
+
+    async def fake_stream(_token, payload):
+        captured["payload"] = payload
+        return "AAA"
+
+    with patch("app.oauth._stream_codex_image", new=fake_stream):
+        out = asyncio.run(generate_codex_image("tok", "a mug", 1024, 1024, "gpt-image-2"))
+
+    assert out == "AAA"
+    assert captured["payload"]["model"] == CODEX_CHAT_MODEL
+    assert captured["payload"]["model"] == "gpt-5.6-luna"
+    assert captured["payload"]["model"] != "gpt-5.5"
+    assert captured["payload"]["tools"][0]["model"] == CODEX_IMAGE_MODEL
 
 
 def test_image_request_keeps_mask_from_extras_and_field():

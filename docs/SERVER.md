@@ -118,7 +118,9 @@ The helper wraps the image as an OpenAI-compatible `image_url` part.
 }
 ```
 
-Codex ignores `api_key` if a stored OAuth session exists.
+Codex ignores `api_key` if a stored OAuth session exists. Image calls wrap
+`gpt-image-2` in a Codex Responses conversation whose model is
+`gpt-5.6-luna`. ChatGPT accounts reject `gpt-5.5` on this endpoint.
 
 ## Control routes (8091)
 

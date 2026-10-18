@@ -300,7 +300,12 @@ def record_status(cache_dir: Path, job_id: str) -> dict[str, Any]:
         job["error"] = err or "capture sidecar exited"
         save_job(cache_dir, job)
     elif job.get("state") == "recording":
-        job["paused"] = folder.joinpath("pause").is_file() or bool(job.get("paused"))
+        # The sidecar owns pause through the `pause` file and rewrites
+        # status.json only every 400 ms, so a snapshot taken right after
+        # resume still claims paused. The file is the control state the API
+        # writes, so trust it alone: a latch on the stale snapshot reports
+        # paused after a resume that already happened.
+        job["paused"] = folder.joinpath("pause").is_file()
         close_live_chunks(cache_dir, job)
         save_job(cache_dir, job)
     return public_job(job)

@@ -56,7 +56,10 @@ def _write_tokens(cache_dir: str | Path, provider: str, payload: dict[str, Any])
 
 
 CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
-CODEX_CHAT_MODEL = "gpt-5.5"
+# Conversation model for the Codex Responses wrapper. ChatGPT Plus/Pro
+# accounts reject gpt-5.5 and older GPT-5 ids on this endpoint. The image
+# tool model stays CODEX_IMAGE_MODEL; this id is only the wrapper.
+CODEX_CHAT_MODEL = "gpt-5.6-luna"
 CODEX_IMAGE_MODEL = "gpt-image-2"
 
 
